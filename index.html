@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sales">
+<title>Sales Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, sans-serif; background: #f0f0f0; color: #111; padding-bottom: 80px; }
+.app-wrap { max-width: 480px; margin: 0 auto; background: #f0f0f0; min-height: 100vh; position: relative; }
+@media (min-width: 500px) {
+  body { background: #ddd; }
+  .tabs { position: sticky; top: 0; }
+  .bottom { max-width: 480px; left: 50%; transform: translateX(-50%); }
+  .overlay .sheet { max-width: 480px; margin: 0 auto; }
+}
+
+h2 { font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 16px 8px; }
+
+/* TABS */
+.tabs { display: flex; background: #fff; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 10; }
+.tab { flex: 1; padding: 14px; text-align: center; font-size: 14px; font-weight: 600; color: #888; border: none; background: none; border-bottom: 3px solid transparent; }
+.tab.on { color: #007aff; border-bottom-color: #007aff; }
+
+/* PAGES */
+.page { display: none; padding: 0 0 16px; }
+.page.on { display: block; }
+
+/* FORM */
+.form { background: #fff; margin: 16px; border-radius: 10px; overflow: hidden; border: 1px solid #ddd; }
+.form input { display: block; width: 100%; padding: 13px 14px; font-size: 16px; border: none; border-bottom: 1px solid #eee; color: #111; background: #fff; outline: none; }
+.form input::placeholder { color: #aaa; }
+.form input:last-of-type { border-bottom: none; }
+.form button { display: block; width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #007aff; color: #fff; border: none; cursor: pointer; }
+
+/* ITEM LIST */
+.item { background: #fff; margin: 0 16px 8px; border-radius: 10px; border: 1px solid #ddd; display: flex; align-items: center; padding: 12px 14px; gap: 10px; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-price { font-size: 12px; color: #888; margin-top: 2px; }
+.item-sold { font-size: 22px; font-weight: 700; color: #007aff; min-width: 32px; text-align: center; }
+.btn { border: none; border-radius: 8px; font-size: 17px; font-weight: 700; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.btn-plus { background: #e8f0fe; color: #007aff; }
+.btn-minus { background: #f0f0f0; color: #555; }
+.btn-del { background: none; color: #ccc; font-size: 20px; }
+
+/* HISTORY */
+.sale { background: #fff; margin: 0 16px 8px; border-radius: 10px; border: 1px solid #ddd; padding: 12px 14px; }
+.sale-time { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+.sale-row { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+.sale-row-name { color: #111; }
+.sale-row-price { color: #888; }
+.sale-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; border-top: 1px solid #eee; margin-top: 6px; padding-top: 6px; }
+.sale-total-amt { color: #007aff; }
+.day-label { font-size: 12px; font-weight: 700; color: #aaa; text-transform: uppercase; margin: 12px 16px 6px; }
+.day-summary { font-size: 12px; color: #fff; background: #555; margin: 4px 16px 10px; border-radius: 6px; padding: 6px 12px; }
+
+/* SUMMARY BAR */
+.summary { background: #007aff; color: #fff; display: flex; }
+.s-stat { flex: 1; padding: 12px; text-align: center; }
+.s-val { font-size: 20px; font-weight: 700; }
+.s-lbl { font-size: 10px; opacity: 0.75; text-transform: uppercase; margin-top: 2px; }
+
+/* BOTTOM */
+.bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ddd; padding: 10px 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+.btn-checkout { width: 100%; padding: 14px; background: #34c759; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.btn-checkout:disabled { background: #ccc; }
+
+/* CHECKOUT MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; }
+.overlay.on { display: flex; }
+.sheet { background: #fff; border-radius: 16px 16px 0 0; width: 100%; padding: 20px; padding-bottom: calc(env(safe-area-inset-bottom,0px) + 20px); max-height: 85vh; overflow-y: auto; }
+.sheet h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+.receipt-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+.receipt-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; margin: 10px 0 16px; }
+.pay-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; background: #fafafa; }
+.pay-row:focus-within { border-color: #007aff; background: #fff; }
+.pay-label { font-size: 14px; font-weight: 600; min-width: 70px; color: #333; }
+.pay-input { flex: 1; border: none; background: none; font-size: 16px; font-weight: 600; color: #111; outline: none; text-align: right; }
+.pay-input::placeholder { color: #ccc; font-weight: 400; }
+.disc-row { background: #fff5f5; border-color: #fcc; }
+.disc-row .pay-label { color: #c00; }
+.disc-row .pay-input { color: #c00; }
+.paid-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; padding: 10px 0; border-top: 1px solid #eee; margin-bottom: 14px; }
+.err { color: #c00; font-size: 13px; text-align: center; margin-bottom: 10px; display: none; }
+.btn-ok { width: 100%; padding: 14px; background: #34c759; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+.btn-cancel { width: 100%; padding: 12px; background: none; color: #888; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; cursor: pointer; }
+.btn-full { border: 1px solid #007aff; background: none; color: #007aff; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btn-clear-field { border: none; background: none; color: #bbb; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; flex-shrink: 0; }
+.btn-clear-field:active { color: #c00; }
+.btn-full:active { background: #007aff; color: #fff; }
+.balance-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-top: 1px solid #eee; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="app-wrap">
+<div class="summary">
+  <div class="s-stat"><div class="s-val" id="s-txn">0</div><div class="s-lbl">Sales today</div></div>
+  <div class="s-stat"><div class="s-val" id="s-rev">0</div><div class="s-lbl">Revenue (Ksh)</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="tab('items',this)">Items</button>
+  <button class="tab" onclick="tab('history',this)">History</button>
+</div>
+
+<!-- ITEMS -->
+<div class="page on" id="page-items">
+  <h2>Add item</h2>
+  <div class="form">
+    <input id="iname" type="text" placeholder="Item name" autocorrect="off" autocomplete="off" />
+    <input id="iprice" type="number" inputmode="decimal" placeholder="Price (Ksh)" min="0" />
+    <button onclick="addItem()">+ Add Item</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 16px 8px;"><span style="font-size:14px;color:#555;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your items — tap +/− to add to cart</span><button onclick="resetAllItems()" style="font-size:12px;font-weight:600;color:#c00;border:1px solid #fcc;background:none;border-radius:6px;padding:4px 10px;cursor:pointer;">Reset all</button></div>
+  <div id="item-list"></div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div id="history-list"></div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom">
+  <button class="btn-checkout" id="btn-checkout" onclick="openCheckout()" disabled>Checkout (0 items)</button>
+</div>
+
+<!-- CHECKOUT SHEET -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeCheckout()">
+  <div class="sheet">
+    <h3>🧾 Order Summary</h3>
+    <div id="receipt"></div>
+    <div class="receipt-total"><span>Subtotal</span><span id="r-sub">Ksh 0</span></div>
+    <div class="receipt-total" id="after-disc-row" style="display:none;color:#c00;"><span>After discount</span><span id="r-after-disc">Ksh 0</span></div>
+
+    <div class="pay-row"><span class="pay-label">📱 M-Pesa</span><input class="pay-input" id="p-mpesa" type="number" inputmode="decimal" placeholder="0" oninput="calcPaid()" /><button class="btn-full" onclick="fillFull('p-mpesa')">Full</button><button class="btn-clear-field" onclick="clearField('p-mpesa')">×</button></div>
+    <div class="pay-row"><span class="pay-label">💵 Cash</span><input class="pay-input" id="p-cash" type="number" inputmode="decimal" placeholder="0" oninput="calcPaid()" /><button class="btn-full" onclick="fillFull('p-cash')">Full</button><button class="btn-clear-field" onclick="clearField('p-cash')">×</button></div>
+    <div class="pay-row"><span class="pay-label">🏦 Bank</span><input class="pay-input" id="p-bank" type="number" inputmode="decimal" placeholder="0" oninput="calcPaid()" /><button class="btn-full" onclick="fillFull('p-bank')">Full</button><button class="btn-clear-field" onclick="clearField('p-bank')">×</button></div>
+    <div class="pay-row disc-row"><span class="pay-label">🏷 Discount</span><input class="pay-input" id="p-disc" type="number" inputmode="decimal" placeholder="0" oninput="calcPaid()" /><button class="btn-clear-field" onclick="clearField('p-disc')">×</button></div>
+
+    <div class="paid-total"><span>Total paid</span><span id="p-total">Ksh 0</span></div>
+    <div class="balance-row" id="balance-row" style="display:none;"><span id="balance-label">Balance remaining</span><span id="p-balance" style="font-weight:700;">Ksh 0</span></div>
+    <div class="err" id="p-err">Please enter at least one payment amount</div>
+    <div class="err" id="p-err2">Amount paid is less than what is owed</div>
+    <button class="btn-ok" onclick="confirmSale()">✅ Confirm Sale</button>
+    <div style="display:flex;gap:8px;margin-top:0;">
+      <button class="btn-cancel" style="flex:1;" onclick="closeCheckout()">Cancel</button>
+      <button class="btn-cancel" style="flex:1;" onclick="resetPaymentFields()">🔄 Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var items = JSON.parse(localStorage.getItem('items') || '[]');
+var sales = JSON.parse(localStorage.getItem('sales') || '[]');
+var cart = {}; // { itemId: qty }
+
+function save() {
+  localStorage.setItem('items', JSON.stringify(items));
+  localStorage.setItem('sales', JSON.stringify(sales));
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function tab(name, el) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('page-' + name).classList.add('on');
+  el.classList.add('on');
+  if (name === 'history') renderHistory();
+}
+
+// ── ITEMS ─────────────────────────────────────────────────────────────────────
+function addItem() {
+  var name = document.getElementById('iname').value.trim();
+  var price = parseFloat(document.getElementById('iprice').value);
+  if (!name) { alert('Please enter an item name'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price'); return; }
+  items.push({ id: Date.now(), name: name, price: price });
+  document.getElementById('iname').value = '';
+  document.getElementById('iprice').value = '';
+  save();
+  renderItems();
+  document.getElementById('iname').focus();
+}
+
+function renderItems() {
+  var list = document.getElementById('item-list');
+  if (items.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:#aaa;padding:24px;font-size:14px;">No items yet — add one above</p>';
+    updateSummary();
+    renderCartBtn();
+    return;
+  }
+  var html = '';
+  items.forEach(function(item) {
+    var qty = cart[item.id] || 0;
+    html += '<div class="item">' +
+      '<div class="item-info">' +
+        '<div class="item-name">' + esc(item.name) + '</div>' +
+        '<div class="item-price">Ksh ' + item.price.toLocaleString() + '</div>' +
+      '</div>' +
+      '<span class="item-sold">' + qty + '</span>' +
+      '<button class="btn btn-minus" onclick="adjust(' + item.id + ',-1)">−</button>' +
+      '<button class="btn btn-plus" onclick="adjust(' + item.id + ',1)">+</button>' +
+
+      '<button class="btn btn-del" onclick="deleteItem(' + item.id + ')">×</button>' +
+    '</div>';
+  });
+  list.innerHTML = html;
+  updateSummary();
+  renderCartBtn();
+}
+
+function adjust(id, d) {
+  cart[id] = Math.max(0, (cart[id] || 0) + d);
+  if (cart[id] === 0) delete cart[id];
+  renderItems();
+}
+
+function deleteItem(id) {
+  var item = items.find(function(i){ return i.id === id; });
+  if (!item) return;
+  if (!confirm('Remove "' + item.name + '"?')) return;
+  items = items.filter(function(i){ return i.id !== id; });
+  delete cart[id];
+  save();
+  renderItems();
+}
+
+function renderCartBtn() {
+  var total = 0, count = 0;
+  items.forEach(function(item) {
+    var q = cart[item.id] || 0;
+    count += q;
+    total += item.price * q;
+  });
+  var btn = document.getElementById('btn-checkout');
+  btn.disabled = count === 0;
+  btn.textContent = count === 0
+    ? 'Checkout (0 items)'
+    : 'Checkout — ' + count + ' item' + (count > 1 ? 's' : '') + ' · Ksh ' + total.toLocaleString();
+}
+
+function updateSummary() {
+  var today = todayKey();
+  var todaySales = sales.filter(function(s){ return s.date === today && !s.voided; });
+  document.getElementById('s-txn').textContent = todaySales.length;
+  var rev = todaySales.reduce(function(s, x){ return s + x.paid; }, 0);
+  document.getElementById('s-rev').textContent = rev.toLocaleString();
+}
+
+// ── CHECKOUT ──────────────────────────────────────────────────────────────────
+function openCheckout() {
+  var html = '';
+  var sub = 0;
+  items.forEach(function(item) {
+    var q = cart[item.id] || 0;
+    if (!q) return;
+    var line = item.price * q;
+    sub += line;
+    html += '<div class="receipt-item"><span>' + esc(item.name) + ' ×' + q + '</span><span>Ksh ' + line.toLocaleString() + '</span></div>';
+  });
+  _subtotal = sub;
+  document.getElementById('receipt').innerHTML = html;
+  document.getElementById('r-sub').textContent = 'Ksh ' + sub.toLocaleString();
+  resetPaymentFields();
+  document.getElementById('overlay').classList.add('on');
+}
+
+function resetPaymentFields() {
+  ['p-mpesa','p-cash','p-bank','p-disc'].forEach(function(id){ document.getElementById(id).value = ''; });
+  document.getElementById('p-total').textContent = 'Ksh 0';
+  document.getElementById('balance-row').style.display = 'none';
+  document.getElementById('after-disc-row').style.display = 'none';
+  document.getElementById('r-sub').textContent = 'Ksh ' + _subtotal.toLocaleString();
+  document.getElementById('p-err').style.display = 'none';
+  document.getElementById('p-err2').style.display = 'none';
+  _fullField = null;
+}
+
+function closeCheckout() {
+  document.getElementById('overlay').classList.remove('on');
+}
+
+var _subtotal = 0; // current checkout subtotal, updated on open
+
+function getDue() {
+  var disc = parseFloat(document.getElementById('p-disc').value) || 0;
+  return Math.max(0, _subtotal - disc);
+}
+
+function calcPaid() {
+  var mpesa = parseFloat(document.getElementById('p-mpesa').value) || 0;
+  var cash  = parseFloat(document.getElementById('p-cash').value)  || 0;
+  var bank  = parseFloat(document.getElementById('p-bank').value)  || 0;
+  var disc  = parseFloat(document.getElementById('p-disc').value)  || 0;
+  var paid  = mpesa + cash + bank;
+  var due   = Math.max(0, _subtotal - disc);
+
+  // Subtotal stays fixed — only show "after discount" if there is one
+  var afterRow = document.getElementById('after-disc-row');
+  if (disc > 0) {
+    afterRow.style.display = 'flex';
+    document.getElementById('r-after-disc').textContent = 'Ksh ' + due.toLocaleString();
+  } else {
+    afterRow.style.display = 'none';
+  }
+
+  // If Full was used, keep that field in sync with the new due amount
+  var fullField = _fullField;
+  if (fullField) {
+    document.getElementById(fullField).value = due;
+    paid = due; // recalc paid with updated value
+  }
+
+  // Total paid
+  paid = (parseFloat(document.getElementById('p-mpesa').value)||0) +
+         (parseFloat(document.getElementById('p-cash').value)||0)  +
+         (parseFloat(document.getElementById('p-bank').value)||0);
+  document.getElementById('p-total').textContent = 'Ksh ' + paid.toLocaleString();
+
+  // Balance / overpayment
+  var diff = paid - due;
+  var balRow = document.getElementById('balance-row');
+  var balLabel = document.getElementById('balance-label');
+  var balAmt   = document.getElementById('p-balance');
+  if (paid > 0 && diff < 0) {
+    // underpaid
+    balRow.style.display = 'flex';
+    balLabel.textContent = 'Balance remaining';
+    balAmt.textContent   = 'Ksh ' + Math.abs(diff).toLocaleString();
+    balAmt.style.color   = '#c00';
+  } else if (paid > 0 && diff > 0) {
+    // overpaid
+    balRow.style.display = 'flex';
+    balLabel.textContent = '⚠️ Overpayment by';
+    balAmt.textContent   = 'Ksh ' + diff.toLocaleString();
+    balAmt.style.color   = '#e67e00';
+  } else {
+    balRow.style.display = 'none';
+  }
+
+  document.getElementById('p-err').style.display  = 'none';
+  document.getElementById('p-err2').style.display = 'none';
+}
+
+var _fullField = null; // tracks which field had Full pressed
+
+function resetAllItems() {
+  if (!confirm('Reset all item quantities to 0?')) return;
+  cart = {};
+  renderItems();
+}
+
+function clearField(fieldId) {
+  document.getElementById(fieldId).value = '';
+  if (_fullField === fieldId) _fullField = null;
+  calcPaid();
+}
+
+function fillFull(fieldId) {
+  _fullField = fieldId;
+  // Clear other payment fields
+  ['p-mpesa','p-cash','p-bank'].forEach(function(id){ if(id!==fieldId) document.getElementById(id).value=''; });
+  document.getElementById(fieldId).value = getDue();
+  calcPaid();
+}
+
+// When user manually edits a Full-filled field, release the Full lock
+['p-mpesa','p-cash','p-bank'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(){
+    if (_fullField === id) _fullField = null;
+  });
+});
+
+function confirmSale() {
+  var mpesa    = parseFloat(document.getElementById('p-mpesa').value) || 0;
+  var cash     = parseFloat(document.getElementById('p-cash').value)  || 0;
+  var bank     = parseFloat(document.getElementById('p-bank').value)  || 0;
+  var discount = parseFloat(document.getElementById('p-disc').value)  || 0;
+  var paid = mpesa + cash + bank;
+  var due  = Math.max(0, _subtotal - discount);
+  if (paid <= 0) { document.getElementById('p-err').style.display = 'block'; return; }
+  if (paid < due) { document.getElementById('p-err2').style.display = 'block'; return; }
+  if (paid > due) { document.getElementById('p-err2').textContent = '⚠️ Overpayment — please correct the amounts'; document.getElementById('p-err2').style.display = 'block'; return; }
+
+  var cartItems = [];
+  items.forEach(function(item) {
+    var q = cart[item.id] || 0;
+    if (q) cartItems.push({ name: item.name, price: item.price, qty: q });
+  });
+
+  sales.push({
+    id: Date.now(),
+    date: todayKey(),
+    ts: Date.now(),
+    items: cartItems,
+    payments: { mpesa: mpesa, cash: cash, bank: bank },
+    discount: discount,
+    paid: paid
+  });
+
+  cart = {};
+  save();
+  closeCheckout();
+  renderItems();
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function renderHistory() {
+  var el = document.getElementById('history-list');
+  var activeSales = sales.filter(function(s){ return !s.voided; });
+  if (!sales.length) {
+    el.innerHTML = '<p style="text-align:center;color:#aaa;padding:32px;font-size:14px;">No sales yet</p>';
+    return;
+  }
+  var sorted = sales.slice().sort(function(a,b){ return b.ts - a.ts; });
+
+  // Group by date for day summaries
+  var byDate = {};
+  sales.forEach(function(s) {
+    if (!byDate[s.date]) byDate[s.date] = { count: 0, revenue: 0 };
+    if (!s.voided) { byDate[s.date].count++; byDate[s.date].revenue += s.paid; }
+  });
+
+  var html = '';
+  var lastDate = null;
+  sorted.forEach(function(s) {
+    if (s.date !== lastDate) {
+      // Close previous day summary if needed
+      if (lastDate) {
+        var prev = byDate[lastDate];
+        html += '<div class="day-summary">' + prev.count + ' sale' + (prev.count !== 1 ? 's' : '') + ' &nbsp;·&nbsp; Revenue: Ksh ' + prev.revenue.toLocaleString() + '</div>';
+      }
+      html += '<div class="day-label">' + formatDate(s.date) + '</div>';
+      lastDate = s.date;
+    }
+    var voided = s.voided ? ' style="opacity:0.45;"' : '';
+    html += '<div class="sale"' + voided + '>';
+    if (s.voided) html += '<div style="font-size:11px;color:#c00;font-weight:700;margin-bottom:4px;">VOIDED</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+    html += '<div class="sale-time">🕐 ' + formatTime(s.ts) + '</div>';
+    if (!s.voided) html += '<button onclick="voidSale(' + s.id + ')" style="font-size:11px;color:#c00;border:1px solid #fcc;background:none;border-radius:5px;padding:2px 8px;cursor:pointer;">Void</button>';
+    html += '</div>';
+    s.items.forEach(function(it) {
+      html += '<div class="sale-row"><span class="sale-row-name">' + esc(it.name) + ' ×' + it.qty + '</span><span class="sale-row-price">Ksh ' + (it.price * it.qty).toLocaleString() + '</span></div>';
+    });
+    html += '<div class="sale-total"><span>Paid</span><span class="sale-total-amt">Ksh ' + s.paid.toLocaleString() + '</span></div>';
+    var methods = [];
+    if (s.payments.mpesa) methods.push('M-Pesa: Ksh ' + s.payments.mpesa.toLocaleString());
+    if (s.payments.cash)  methods.push('Cash: Ksh ' + s.payments.cash.toLocaleString());
+    if (s.payments.bank)  methods.push('Bank: Ksh ' + s.payments.bank.toLocaleString());
+    if (s.discount)       methods.push('Discount: Ksh ' + s.discount.toLocaleString());
+    if (methods.length) html += '<div style="font-size:12px;color:#999;margin-top:4px;">' + methods.join(' · ') + '</div>';
+    html += '</div>';
+  });
+  // Last day summary
+  if (lastDate) {
+    var last = byDate[lastDate];
+    html += '<div class="day-summary">' + last.count + ' sale' + (last.count !== 1 ? 's' : '') + ' &nbsp;·&nbsp; Revenue: Ksh ' + last.revenue.toLocaleString() + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function voidSale(id) {
+  if (!confirm('Void this sale? It will stay in history marked as voided and will not count in your totals.')) return;
+  var s = sales.find(function(x){ return x.id == id; });
+  if (s) { s.voided = true; save(); renderHistory(); updateSummary(); }
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function todayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+function formatDate(k) {
+  var p = k.split('-').map(Number);
+  return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-KE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'});
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('iname').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('iprice').focus(); });
+document.getElementById('iprice').addEventListener('keydown', function(e){ if(e.key==='Enter') addItem(); });
+
+renderItems();
+</script>
+</div>
+</body>
+</html>
