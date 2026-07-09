@@ -9,7 +9,7 @@
 <title>Sales Tracker</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-:root { --primary: #800080; --secondary: #800080; --accent: #34c759; }
+:root { --primary: #007aff; --secondary: #005ecb; --accent: #34c759; }
 body { font-family: -apple-system, sans-serif; background: #f0f0f0; color: #111; padding-bottom: 80px; }
 .app-wrap { max-width: 480px; margin: 0 auto; background: #f0f0f0; min-height: 100vh; position: relative; }
 @media (min-width: 500px) {
@@ -54,7 +54,7 @@ h2 { font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 0.
 /* ITEM LIST */
 .item { background: #fff; margin: 0 16px 8px; border-radius: 10px; border: 1px solid #ddd; display: flex; align-items: center; padding: 12px 14px; gap: 10px; }
 .item-info { flex: 1; min-width: 0; }
-.item-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-name { font-size: 15px; font-weight: 600; white-space: normal; word-break: break-word; line-height: 1.3; }
 .item-price { font-size: 12px; color: #888; margin-top: 2px; }
 .item-sold { font-size: 22px; font-weight: 700; color: var(--primary); min-width: 32px; text-align: center; }
 .btn { border: none; border-radius: 8px; font-size: 17px; font-weight: 700; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -153,6 +153,10 @@ h2 { font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 0.
 
   <!-- BOTTOM BAR -->
   <div class="bottom">
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button onclick="openSavedCarts()" style="flex:1;padding:10px;background:#f0f0f0;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:600;color:#555;cursor:pointer;">🗂 Saved Carts</button>
+      <button id="btn-save-cart" onclick="saveCart()" style="flex:1;padding:10px;background:#fff3e0;border:1px solid #ffc67a;border-radius:8px;font-size:13px;font-weight:600;color:#e67e00;cursor:pointer;" disabled>💾 Save Cart</button>
+    </div>
     <button class="btn-checkout" id="btn-checkout" onclick="openCheckout()" disabled>Checkout (0 items)</button>
   </div>
 
@@ -179,6 +183,41 @@ h2 { font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 0.
     </div>
   </div>
 
+  <!-- EDIT ITEM MODAL -->
+  <div class="overlay" id="edit-overlay" onclick="if(event.target===this)closeEdit()">
+    <div class="sheet">
+      <h3>Edit Item</h3>
+      <div class="form" style="margin:0 0 12px;">
+        <input id="edit-name"  type="text"   placeholder="Item name"   autocorrect="off" autocomplete="off" />
+        <input id="edit-price" type="number" placeholder="Price (Ksh)" inputmode="decimal" min="0" />
+      </div>
+      <button class="btn-ok" onclick="saveEdit()">Save Changes</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- SAVED CARTS MODAL -->
+  <div class="overlay" id="savedcarts-overlay" onclick="if(event.target===this)closeSavedCarts()">
+    <div class="sheet">
+      <h3>🗂 Saved Carts</h3>
+      <div id="saved-carts-list"></div>
+      <button class="btn-cancel" style="margin-top:12px;" onclick="closeSavedCarts()">Close</button>
+    </div>
+  </div>
+
+  <!-- SAVE CART NAME MODAL -->
+  <div class="overlay" id="savename-overlay" onclick="if(event.target===this)closeSaveName()">
+    <div class="sheet">
+      <h3>💾 Save Cart As</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:12px;">Give this cart a name so you can find it later</p>
+      <div class="form" style="margin:0 0 12px;">
+        <input id="cart-save-name" type="text" placeholder="e.g. Client A, Table 3..." autocorrect="off" autocomplete="off" />
+      </div>
+      <button class="btn-ok" onclick="confirmSaveCart()">Save & Clear Cart</button>
+      <button class="btn-cancel" onclick="closeSaveName()">Cancel</button>
+    </div>
+  </div>
+
   <!-- NEW DAY PROMPT -->
   <div class="overlay" id="newday-overlay">
     <div class="sheet" style="text-align:center;">
@@ -198,22 +237,29 @@ h2 { font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 0.
 // CLIENT BRANDING — EDIT THESE LINES ONLY
 // ═══════════════════════════════════════════════
 var CONFIG = {
-  businessName:   "Shop 01 - Sasa Mall",
+  businessName:   "My Business",
   tagline:        "Sales Tracker",
-  primaryColor:   "#800080",
+  primaryColor:   "#007aff",
   secondaryColor: "#005ecb",
   accentColor:    "#34c759",
-  logo:           "logo.png"
+  logo:           ""
 };
 // ═══════════════════════════════════════════════
 
-var items = JSON.parse(localStorage.getItem('items') || '[]');
-var sales = JSON.parse(localStorage.getItem('sales') || '[]');
-var cart  = {};
+var items      = JSON.parse(localStorage.getItem('items')      || '[]');
+var sales      = JSON.parse(localStorage.getItem('sales')      || '[]');
+var cart       = JSON.parse(localStorage.getItem('cart')       || '{}');
+var savedCarts = JSON.parse(localStorage.getItem('savedCarts') || '[]');
+// Convert cart keys back to numbers
+var _cartFixed = {};
+Object.keys(cart).forEach(function(k){ _cartFixed[Number(k)] = cart[k]; });
+cart = _cartFixed;
 
 function save() {
-  localStorage.setItem('items', JSON.stringify(items));
-  localStorage.setItem('sales', JSON.stringify(sales));
+  localStorage.setItem('items',      JSON.stringify(items));
+  localStorage.setItem('sales',      JSON.stringify(sales));
+  localStorage.setItem('cart',       JSON.stringify(cart));
+  localStorage.setItem('savedCarts', JSON.stringify(savedCarts));
 }
 
 // ── BRANDING ──────────────────────────────────────────────────────────────────
@@ -272,6 +318,7 @@ function renderItems() {
       '<span class="item-sold">' + qty + '</span>' +
       '<button class="btn btn-minus" onclick="adjust(' + item.id + ',-1)">−</button>' +
       '<button class="btn btn-plus"  onclick="adjust(' + item.id + ',1)">+</button>' +
+      '<button class="btn btn-edit"  onclick="editItem(' + item.id + ')" style="background:#f0f7ff;color:#007aff;font-size:13px;font-weight:600;width:auto;padding:0 10px;">Edit</button>' +
       '<button class="btn btn-del"   onclick="deleteItem(' + item.id + ')">×</button>' +
     '</div>';
   });
@@ -283,6 +330,7 @@ function renderItems() {
 function adjust(id, d) {
   cart[id] = Math.max(0, (cart[id] || 0) + d);
   if (cart[id] === 0) delete cart[id];
+  localStorage.setItem('cart', JSON.stringify(cart));
   renderItems();
 }
 
@@ -298,6 +346,7 @@ function deleteItem(id) {
 function resetAllItems() {
   if (!confirm('Reset all item quantities to 0?')) return;
   cart = {};
+  localStorage.setItem('cart', JSON.stringify(cart));
   renderItems();
 }
 
@@ -309,7 +358,9 @@ function renderCartBtn() {
     total += item.price * q;
   });
   var btn = document.getElementById('btn-checkout');
+  var saveBtn = document.getElementById('btn-save-cart');
   btn.disabled = count === 0;
+  if (saveBtn) saveBtn.disabled = count === 0;
   btn.textContent = count === 0
     ? 'Checkout (0 items)'
     : 'Checkout — ' + count + ' item' + (count > 1 ? 's' : '') + ' · Ksh ' + total.toLocaleString();
@@ -579,6 +630,96 @@ function doBackupAndStart() {
 function dismissNewDay() {
   localStorage.setItem(REMIND_LATER_KEY, Date.now() + 30*60*1000);
   document.getElementById('newday-overlay').classList.remove('on');
+}
+
+// ── EDIT ITEM ────────────────────────────────────────────────────────────────
+var _editId = null;
+function editItem(id) {
+  var item = items.find(function(i){ return i.id === id; });
+  if (!item) return;
+  _editId = id;
+  document.getElementById('edit-name').value  = item.name;
+  document.getElementById('edit-price').value = item.price;
+  document.getElementById('edit-overlay').classList.add('on');
+}
+function saveEdit() {
+  var name  = document.getElementById('edit-name').value.trim();
+  var price = parseFloat(document.getElementById('edit-price').value);
+  if (!name) { alert('Please enter a name'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price'); return; }
+  var item = items.find(function(i){ return i.id === _editId; });
+  if (item) { item.name = name; item.price = price; }
+  save(); closeEdit(); renderItems();
+}
+function closeEdit() { document.getElementById('edit-overlay').classList.remove('on'); }
+
+// ── SAVED CARTS ───────────────────────────────────────────────────────────────
+function saveCart() {
+  var count = Object.values(cart).reduce(function(s,q){ return s+q; }, 0);
+  if (count === 0) { alert('Your cart is empty.'); return; }
+  document.getElementById('cart-save-name').value = '';
+  document.getElementById('savename-overlay').classList.add('on');
+  setTimeout(function(){ document.getElementById('cart-save-name').focus(); }, 300);
+}
+function closeSaveName() { document.getElementById('savename-overlay').classList.remove('on'); }
+function confirmSaveCart() {
+  var name = document.getElementById('cart-save-name').value.trim() || ('Cart ' + (savedCarts.length + 1));
+  // Build snapshot
+  var cartItems = [];
+  items.forEach(function(item) {
+    var q = cart[item.id] || 0;
+    if (q) cartItems.push({ id: item.id, name: item.name, price: item.price, qty: q });
+  });
+  savedCarts.push({ id: Date.now(), name: name, items: cartItems, savedAt: Date.now() });
+  cart = {};
+  save();
+  closeSaveName();
+  renderItems();
+  alert('Cart saved as "' + name + '". Your cart has been cleared.');
+}
+function openSavedCarts() {
+  var el = document.getElementById('saved-carts-list');
+  if (!savedCarts.length) {
+    el.innerHTML = '<p style="text-align:center;color:#aaa;padding:24px;font-size:14px;">No saved carts yet</p>';
+  } else {
+    var html = '';
+    savedCarts.forEach(function(sc) {
+      var total = sc.items.reduce(function(s,it){ return s + it.price * it.qty; }, 0);
+      var itemNames = sc.items.map(function(it){ return it.name + ' ×' + it.qty; }).join(', ');
+      html += '<div style="background:#f9f9f9;border:1px solid #eee;border-radius:10px;padding:12px 14px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-size:15px;font-weight:700;">' + esc(sc.name) + '</span>' +
+          '<span style="font-size:13px;font-weight:700;color:#007aff;">Ksh ' + total.toLocaleString() + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#999;margin-bottom:10px;">' + esc(itemNames) + '</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="restoreCart(' + sc.id + ')" style="flex:1;padding:8px;background:#007aff;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Restore</button>' +
+          '<button onclick="deleteSavedCart(' + sc.id + ')" style="padding:8px 12px;background:none;border:1px solid #fcc;color:#c00;border-radius:7px;font-size:13px;cursor:pointer;">Delete</button>' +
+        '</div>' +
+      '</div>';
+    });
+    el.innerHTML = html;
+  }
+  document.getElementById('savedcarts-overlay').classList.add('on');
+}
+function closeSavedCarts() { document.getElementById('savedcarts-overlay').classList.remove('on'); }
+function restoreCart(id) {
+  var sc = savedCarts.find(function(x){ return x.id === id; });
+  if (!sc) return;
+  var hasItems = Object.values(cart).reduce(function(s,q){ return s+q; }, 0) > 0;
+  if (hasItems && !confirm('You have items in your current cart. Restoring will replace them. Continue?')) return;
+  cart = {};
+  sc.items.forEach(function(it){ cart[it.id] = it.qty; });
+  savedCarts = savedCarts.filter(function(x){ return x.id !== id; });
+  save();
+  closeSavedCarts();
+  renderItems();
+}
+function deleteSavedCart(id) {
+  if (!confirm('Delete this saved cart?')) return;
+  savedCarts = savedCarts.filter(function(x){ return x.id !== id; });
+  save();
+  openSavedCarts();
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
