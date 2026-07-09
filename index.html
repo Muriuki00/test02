@@ -652,26 +652,19 @@ function closeEdit() { document.getElementById('edit-overlay').classList.remove(
 function saveCart() {
   var count = Object.values(cart).reduce(function(s,q){ return s+q; }, 0);
   if (count === 0) { alert('Your cart is empty.'); return; }
-  document.getElementById('cart-save-name').value = '';
-  document.getElementById('savename-overlay').classList.add('on');
-  setTimeout(function(){ document.getElementById('cart-save-name').focus(); }, 300);
-}
-function closeSaveName() { document.getElementById('savename-overlay').classList.remove('on'); }
-function confirmSaveCart() {
-  var name = document.getElementById('cart-save-name').value.trim() || ('Cart ' + (savedCarts.length + 1));
-  // Build snapshot
   var cartItems = [];
   items.forEach(function(item) {
     var q = cart[item.id] || 0;
     if (q) cartItems.push({ id: item.id, name: item.name, price: item.price, qty: q });
   });
+  var name = 'Cart ' + (savedCarts.length + 1);
   savedCarts.push({ id: Date.now(), name: name, items: cartItems, savedAt: Date.now() });
   cart = {};
   save();
-  closeSaveName();
   renderItems();
-  alert('Cart saved as "' + name + '". Your cart has been cleared.');
 }
+function closeSaveName() { document.getElementById('savename-overlay').classList.remove('on'); }
+function confirmSaveCart() {}
 function openSavedCarts() {
   var el = document.getElementById('saved-carts-list');
   if (!savedCarts.length) {
