@@ -515,11 +515,9 @@ function renderHistory() {
   var html = '', lastDate = null;
   sorted.forEach(function(s) {
     if (s.date !== lastDate) {
-      if (lastDate) {
-        var prev = byDate[lastDate];
-        html += '<div class="day-summary">' + prev.count + ' sale' + (prev.count!==1?'s':'') + ' &nbsp;·&nbsp; Revenue: Ksh ' + prev.revenue.toLocaleString() + '</div>';
-      }
       html += '<div class="day-label">' + formatDate(s.date) + '</div>';
+      var d = byDate[s.date];
+      html += '<div class="day-summary">' + d.count + ' sale' + (d.count!==1?'s':'') + ' &nbsp;·&nbsp; Revenue: Ksh ' + d.revenue.toLocaleString() + '</div>';
       lastDate = s.date;
     }
     var voided = s.voided ? ' style="opacity:0.45;"' : '';
@@ -541,10 +539,7 @@ function renderHistory() {
     if (methods.length) html += '<div style="font-size:12px;color:#999;margin-top:4px;">' + methods.join(' · ') + '</div>';
     html += '</div>';
   });
-  if (lastDate) {
-    var last = byDate[lastDate];
-    html += '<div class="day-summary">' + last.count + ' sale' + (last.count!==1?'s':'') + ' &nbsp;·&nbsp; Revenue: Ksh ' + last.revenue.toLocaleString() + '</div>';
-  }
+
   el.innerHTML = html;
 }
 
